@@ -1,0 +1,58 @@
+version: 2
+updates:
+  # Go modules (backend API)
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - go
+    groups:
+      go-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # npm (frontend) — requires package-lock.json
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - frontend
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Docker base image in the backend build
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - docker
+
+  # Docker base images in the Caddy/UI build (node + caddy)
+  - package-ecosystem: docker
+    directory: /caddy
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - docker
+
+  # GitHub Actions workflows (active once you add any under .github/workflows)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - ci
