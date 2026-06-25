@@ -1,4 +1,4 @@
-FROM node:22-alpine AS ui-builder
+FROM node:26-alpine AS ui-builder
 
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
