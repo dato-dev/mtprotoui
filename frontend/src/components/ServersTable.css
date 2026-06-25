@@ -132,6 +132,38 @@
   display: block;
 }
 
+.col-name__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.col-name__row .server-name {
+  display: inline;
+}
+
+.drag-handle {
+  color: var(--text-muted);
+  cursor: grab;
+  font-size: 0.95rem;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.servers-table__row.is-draggable {
+  cursor: grab;
+}
+
+.servers-table__row.is-dragging {
+  opacity: 0.4;
+}
+
+.servers-table__row.is-drop-target td {
+  box-shadow: inset 0 2px 0 0 var(--primary);
+}
+
 .server-tags {
   display: flex;
   flex-wrap: wrap;

@@ -92,6 +92,11 @@
   color: #93c5fd;
 }
 
+.toolbar__manual {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .bulkbar {
   display: flex;
   align-items: center;

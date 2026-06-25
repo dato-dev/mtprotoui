@@ -7,7 +7,7 @@ import { useConfirm } from './ui/ConfirmDialog'
 import { useToast } from './ui/Toast'
 import './ServersTable.css'
 
-export type SortKey = 'name' | 'host' | 'status' | 'deploy' | 'created'
+export type SortKey = 'name' | 'host' | 'status' | 'deploy' | 'created' | 'manual'
 export type SortDir = 'asc' | 'desc'
 
 type StatsState = { loading: boolean; data?: ContainerStats; error?: string }
@@ -23,6 +23,8 @@ type Props = {
   sortDir: SortDir
   onSort: (key: SortKey) => void
   onEdit: (server: Server) => void
+  manualMode: boolean
+  onReorder: (draggedId: string, targetId: string) => void
 }
 
 function statusLabel(status: string) {
@@ -97,14 +99,26 @@ export default function ServersTable({
   sortDir,
   onSort,
   onEdit,
+  manualMode,
+  onReorder,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [busyId, setBusyId] = useState<string | null>(null)
   const [qrOpen, setQrOpen] = useState<Set<string>>(new Set())
   const [logsServer, setLogsServer] = useState<Server | null>(null)
   const [stats, setStats] = useState<Record<string, StatsState>>({})
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
   const confirm = useConfirm()
   const toast = useToast()
+
+  function handleDrop(targetId: string) {
+    if (dragId && dragId !== targetId) {
+      onReorder(dragId, targetId)
+    }
+    setDragId(null)
+    setOverId(null)
+  }
 
   async function loadStats(id: string) {
     setStats((prev) => ({ ...prev, [id]: { loading: true } }))
@@ -268,7 +282,27 @@ export default function ServersTable({
             return (
               <Fragment key={server.id}>
                 <tr
-                  className={`servers-table__row ${isOpen ? 'is-expanded' : ''}`}
+                  className={`servers-table__row ${isOpen ? 'is-expanded' : ''} ${
+                    manualMode ? 'is-draggable' : ''
+                  } ${overId === server.id && dragId !== server.id ? 'is-drop-target' : ''} ${
+                    dragId === server.id ? 'is-dragging' : ''
+                  }`}
+                  draggable={manualMode}
+                  onDragStart={() => manualMode && setDragId(server.id)}
+                  onDragOver={(e) => {
+                    if (manualMode && dragId) {
+                      e.preventDefault()
+                      setOverId(server.id)
+                    }
+                  }}
+                  onDragEnd={() => {
+                    setDragId(null)
+                    setOverId(null)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    handleDrop(server.id)
+                  }}
                   onClick={() => toggleExpanded(server.id)}
                 >
                   <td className="col-check" onClick={(e) => e.stopPropagation()}>
@@ -293,7 +327,14 @@ export default function ServersTable({
                     </button>
                   </td>
                   <td className="col-name">
-                    <span className="server-name">{server.name}</span>
+                    <div className="col-name__row">
+                      {manualMode && (
+                        <span className="drag-handle" title="Перетащите для сортировки" aria-hidden>
+                          ⠿
+                        </span>
+                      )}
+                      <span className="server-name">{server.name}</span>
+                    </div>
                     {(server.tags?.length ?? 0) > 0 && (
                       <span className="server-tags">
                         {server.tags.map((tag) => (

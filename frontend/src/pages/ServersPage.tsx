@@ -6,6 +6,7 @@ import ServersTable, { SortDir, SortKey } from '../components/ServersTable'
 import Button from '../components/ui/Button'
 import { useConfirm } from '../components/ui/ConfirmDialog'
 import { useToast } from '../components/ui/Toast'
+import { loadOrder, loadPrefs, saveOrder, savePrefs } from '../utils/prefs'
 import './ServersPage.css'
 
 type Props = {
@@ -31,12 +32,19 @@ export default function ServersPage({ username, onLogout }: Props) {
   const [showAdd, setShowAdd] = useState(false)
   const [editServer, setEditServer] = useState<Server | null>(null)
 
+  const initialPrefs = loadPrefs()
   const [search, setSearch] = useState('')
-  const [tagFilter, setTagFilter] = useState<string | null>(null)
-  const [sortKey, setSortKey] = useState<SortKey>('created')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [tagFilter, setTagFilter] = useState<string | null>(initialPrefs.tagFilter ?? null)
+  const [sortKey, setSortKey] = useState<SortKey>((initialPrefs.sortKey as SortKey) ?? 'created')
+  const [sortDir, setSortDir] = useState<SortDir>((initialPrefs.sortDir as SortDir) ?? 'desc')
+  const [manualOrder, setManualOrder] = useState<string[]>(loadOrder())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+
+  // Persist filters/sorting across sessions.
+  useEffect(() => {
+    savePrefs({ tagFilter, sortKey, sortDir })
+  }, [tagFilter, sortKey, sortDir])
 
   const loadServers = useCallback(async () => {
     try {
@@ -76,6 +84,18 @@ export default function ServersPage({ username, onLogout }: Props) {
       return haystack.includes(q)
     })
 
+    if (sortKey === 'manual') {
+      const pos = new Map(manualOrder.map((id, i) => [id, i]))
+      list = [...list].sort((a, b) => {
+        const pa = pos.get(a.id) ?? Number.MAX_SAFE_INTEGER
+        const pb = pos.get(b.id) ?? Number.MAX_SAFE_INTEGER
+        if (pa !== pb) return pa - pb
+        // servers not yet in manual order: newest first
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+      return list
+    }
+
     list = [...list].sort((a, b) => {
       let cmp = 0
       switch (sortKey) {
@@ -98,7 +118,7 @@ export default function ServersPage({ username, onLogout }: Props) {
       return sortDir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [servers, search, tagFilter, sortKey, sortDir])
+  }, [servers, search, tagFilter, sortKey, sortDir, manualOrder])
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -106,6 +126,45 @@ export default function ServersPage({ username, onLogout }: Props) {
     } else {
       setSortKey(key)
       setSortDir(key === 'created' ? 'desc' : 'asc')
+    }
+  }
+
+  // Full server id order respecting the current manual order (unknown ids → end).
+  function fullOrderedIds(): string[] {
+    const pos = new Map(manualOrder.map((id, i) => [id, i]))
+    return [...servers]
+      .sort((a, b) => {
+        const pa = pos.get(a.id) ?? Number.MAX_SAFE_INTEGER
+        const pb = pos.get(b.id) ?? Number.MAX_SAFE_INTEGER
+        if (pa !== pb) return pa - pb
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+      .map((s) => s.id)
+  }
+
+  function handleReorder(draggedId: string, targetId: string) {
+    const ids = fullOrderedIds()
+    const from = ids.indexOf(draggedId)
+    const to = ids.indexOf(targetId)
+    if (from < 0 || to < 0 || from === to) return
+    ids.splice(from, 1)
+    ids.splice(to, 0, draggedId)
+    setManualOrder(ids)
+    saveOrder(ids)
+  }
+
+  function toggleManualMode() {
+    if (sortKey === 'manual') {
+      setSortKey('created')
+      setSortDir('desc')
+    } else {
+      // seed the order from the current view so dragging starts from what's shown
+      if (manualOrder.length === 0) {
+        const seeded = fullOrderedIds()
+        setManualOrder(seeded)
+        saveOrder(seeded)
+      }
+      setSortKey('manual')
     }
   }
 
@@ -229,6 +288,14 @@ export default function ServersPage({ username, onLogout }: Props) {
               ))}
             </div>
           )}
+          <button
+            type="button"
+            className={`tag-chip toolbar__manual ${sortKey === 'manual' ? 'is-active' : ''}`}
+            onClick={toggleManualMode}
+            title="Ручной порядок перетаскиванием"
+          >
+            ↕ Ручной порядок
+          </button>
         </div>
       )}
 
@@ -259,6 +326,8 @@ export default function ServersPage({ username, onLogout }: Props) {
           sortDir={sortDir}
           onSort={handleSort}
           onEdit={setEditServer}
+          manualMode={sortKey === 'manual'}
+          onReorder={handleReorder}
         />
       )}
 
