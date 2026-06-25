@@ -7,13 +7,13 @@ import (
 )
 
 var (
-	ErrPasswordTooShort    = errors.New("password must be at least 12 characters")
-	ErrPasswordUppercase   = errors.New("password must contain an uppercase letter")
-	ErrPasswordLowercase   = errors.New("password must contain a lowercase letter")
-	ErrPasswordDigit       = errors.New("password must contain a digit")
-	ErrPasswordSpecial     = errors.New("password must contain a special character")
-	ErrPasswordSameAsUser  = errors.New("password must not match username")
-	ErrPasswordUnchanged   = errors.New("new password must differ from current password")
+	ErrPasswordTooShort   = errors.New("password must be at least 12 characters")
+	ErrPasswordUppercase  = errors.New("password must contain an uppercase letter")
+	ErrPasswordLowercase  = errors.New("password must contain a lowercase letter")
+	ErrPasswordDigit      = errors.New("password must contain a digit")
+	ErrPasswordSpecial    = errors.New("password must contain a special character")
+	ErrPasswordSameAsUser = errors.New("password must not match username")
+	ErrPasswordUnchanged  = errors.New("new password must differ from current password")
 )
 
 func ValidatePassword(password, username string) error {

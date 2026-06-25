@@ -12,10 +12,10 @@ import (
 )
 
 type Config struct {
-	Host       string
-	Port       int
-	User       string
-	AuthType   string
+	Host        string
+	Port        int
+	User        string
+	AuthType    string
 	Credentials crypto.SSHCredentials
 }
 
