@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/dato-dev/mtprotoui/compare/v1.0.1...v1.1.0) (2026-06-25)
+
+
+### ✨ Features
+
+* **ui:** manual server ordering and persisted filters ([51bd582](https://github.com/dato-dev/mtprotoui/commit/51bd582bf3612427f53c98ed6a965a8843a57231))
+
 ## [1.0.1](https://github.com/dato-dev/mtprotoui/compare/v1.0.0...v1.0.1) (2026-06-25)
 
 ### 📚 Documentation
