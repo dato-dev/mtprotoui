@@ -6,7 +6,7 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
-FROM caddy:2.8-alpine
+FROM caddy:2.11-alpine
 
 COPY caddy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
