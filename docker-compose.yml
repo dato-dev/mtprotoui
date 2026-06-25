@@ -1,0 +1,50 @@
+services:
+  api:
+    build: ./backend
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW
+    environment:
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_PASSWORD_RESET: ${ADMIN_PASSWORD_RESET:-false}
+      WHITELIST_URL: ${WHITELIST_URL:-https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/main/whitelist.txt}
+      HEALTH_INTERVAL: ${HEALTH_INTERVAL:-5m}
+      PING_ENABLED: ${PING_ENABLED:-true}
+      PING_COUNT: ${PING_COUNT:-3}
+      PING_TIMEOUT: ${PING_TIMEOUT:-4s}
+      TCP_TIMEOUT: ${TCP_TIMEOUT:-4s}
+      DATABASE_PATH: /data/mtprotoui.db
+    volumes:
+      - mtproto-data:/data
+    networks:
+      - internal
+
+  caddy:
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+    networks:
+      - internal
+
+volumes:
+  mtproto-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:
