@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, Server } from '../api/client'
 import AddServerModal from '../components/AddServerModal'
+import AuditLogModal from '../components/AuditLogModal'
 import EditServerModal from '../components/EditServerModal'
 import ServersTable, { SortDir, SortKey } from '../components/ServersTable'
 import Button from '../components/ui/Button'
@@ -30,6 +31,7 @@ export default function ServersPage({ username, onLogout }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [showAudit, setShowAudit] = useState(false)
   const [editServer, setEditServer] = useState<Server | null>(null)
 
   const initialPrefs = loadPrefs()
@@ -250,6 +252,9 @@ export default function ServersPage({ username, onLogout }: Props) {
           <Button variant="primary" onClick={() => setShowAdd(true)}>
             + Добавить сервер
           </Button>
+          <Button variant="secondary" onClick={() => setShowAudit(true)}>
+            Журнал
+          </Button>
           <Button variant="ghost" onClick={handleLogout}>
             Выйти
           </Button>
@@ -354,6 +359,8 @@ export default function ServersPage({ username, onLogout }: Props) {
           }}
         />
       )}
+
+      {showAudit && <AuditLogModal onClose={() => setShowAudit(false)} />}
 
       {editServer && (
         <EditServerModal

@@ -44,6 +44,16 @@ export type ContainerStats = {
   pids: string
 }
 
+export type AuditEntry = {
+  id: string
+  created_at: string
+  actor: string
+  action: string
+  server_id?: string
+  server_name?: string
+  details?: string
+}
+
 export type EditPayload = {
   name?: string
   host?: string
@@ -147,6 +157,8 @@ export const api = {
     request<{ container: string; logs: string }>(`/api/servers/${id}/logs?tail=${tail}`),
 
   serverStats: (id: string) => request<ContainerStats>(`/api/servers/${id}/stats`),
+
+  listAudit: () => request<AuditEntry[]>('/api/audit'),
 
   editServer: (id: string, payload: EditPayload) =>
     request<{ id: string; redeploying: boolean }>(`/api/servers/${id}`, {

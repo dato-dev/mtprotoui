@@ -67,6 +67,37 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/servers/{id}/logs", h.serverLogs)
 	mux.HandleFunc("GET /api/servers/{id}/stats", h.serverStats)
 	mux.HandleFunc("POST /api/servers/test-ssh", h.testSSH)
+
+	mux.HandleFunc("GET /api/audit", h.listAudit)
+}
+
+// recordAudit appends an audit entry, resolving the actor from the JWT.
+func (h *Handler) recordAudit(r *http.Request, action, serverID, serverName, details string) {
+	actor := "unknown"
+	if claims, err := h.auth.ParseRequest(r); err == nil {
+		actor = claims.Username
+	}
+	_ = h.store.AddAuditEntry(context.Background(), store.AuditEntry{
+		ID:         uuid.NewString(),
+		CreatedAt:  time.Now().UTC(),
+		Actor:      actor,
+		Action:     action,
+		ServerID:   serverID,
+		ServerName: serverName,
+		Details:    details,
+	})
+}
+
+func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
+	entries, err := h.store.ListAuditEntries(r.Context(), 200)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list audit log")
+		return
+	}
+	if entries == nil {
+		entries = []store.AuditEntry{}
+	}
+	writeJSON(w, http.StatusOK, entries)
 }
 
 type loginRequest struct {
@@ -258,6 +289,7 @@ func (h *Handler) createServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAudit(r, "create", srv.ID, srv.Name, proxyType)
 	h.setDeployStep(r.Context(), srv.ID, deployStepByKey(operation.DeployPreparing))
 	go h.runDeploy(srv.ID, true)
 
@@ -341,6 +373,8 @@ func (h *Handler) editServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAudit(r, "edit", id, name, "")
+
 	// A port or host change only takes effect once the container is recreated.
 	needsRedeploy := mtprotoPort != srv.MTProtoPort || host != srv.Host
 	if needsRedeploy && srv.DeployStatus == "ready" {
@@ -368,6 +402,7 @@ func (h *Handler) deleteServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAudit(r, "delete", id, srv.Name, "")
 	h.setDeleteStep(r.Context(), id, deleteStepByKey(operation.DeletePreparing))
 	go h.runDelete(id)
 
@@ -386,6 +421,7 @@ func (h *Handler) recreateServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.store.UpdateServerDeploy(r.Context(), id, srv.SNIDomain, srv.Secret, srv.ProxyLink, srv.MTProtoPort, "deploying", "")
+	h.recordAudit(r, "recreate", id, srv.Name, "")
 	h.setDeployStep(r.Context(), id, deployStepByKey(operation.DeployPreparing))
 	go h.runDeploy(id, true)
 

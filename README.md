@@ -214,6 +214,7 @@ docker compose -f docker-compose-prod.yml up -d
 | `GET` | `/api/servers/:id/qr` | QR-код proxy-ссылки (PNG) |
 | `GET` | `/api/servers/:id/logs` | Логи контейнера (`?tail=N`) |
 | `POST` | `/api/servers/test-ssh` | Тест SSH |
+| `GET` | `/api/audit` | Журнал действий (кто/когда/что) |
 
 ---
 

@@ -107,6 +107,16 @@ CREATE TABLE IF NOT EXISTS known_hosts (
 	key_line TEXT NOT NULL,
 	created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS audit_log (
+	id TEXT PRIMARY KEY,
+	created_at TEXT NOT NULL,
+	actor TEXT NOT NULL,
+	action TEXT NOT NULL,
+	server_id TEXT NOT NULL DEFAULT '',
+	server_name TEXT NOT NULL DEFAULT '',
+	details TEXT NOT NULL DEFAULT ''
+);
 `
 	if _, err := s.db.Exec(schema); err != nil {
 		return fmt.Errorf("migrate: %w", err)
@@ -429,6 +439,55 @@ func (s *Store) UpdateServerHealth(
 func (s *Store) DeleteServer(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM servers WHERE id = ?`, id)
 	return err
+}
+
+type AuditEntry struct {
+	ID         string    `json:"id"`
+	CreatedAt  time.Time `json:"created_at"`
+	Actor      string    `json:"actor"`
+	Action     string    `json:"action"`
+	ServerID   string    `json:"server_id,omitempty"`
+	ServerName string    `json:"server_name,omitempty"`
+	Details    string    `json:"details,omitempty"`
+}
+
+func (s *Store) AddAuditEntry(ctx context.Context, e AuditEntry) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO audit_log (id, created_at, actor, action, server_id, server_name, details)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		e.ID, e.CreatedAt.UTC().Format(time.RFC3339), e.Actor, e.Action,
+		e.ServerID, e.ServerName, e.Details)
+	return err
+}
+
+func (s *Store) ListAuditEntries(ctx context.Context, limit int) ([]AuditEntry, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 200
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, created_at, actor, action, server_id, server_name, details
+		FROM audit_log ORDER BY created_at DESC, rowid DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		var createdAt string
+		if err := rows.Scan(&e.ID, &createdAt, &e.Actor, &e.Action,
+			&e.ServerID, &e.ServerName, &e.Details); err != nil {
+			return nil, err
+		}
+		t, err := time.Parse(time.RFC3339, createdAt)
+		if err != nil {
+			return nil, err
+		}
+		e.CreatedAt = t
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
 }
 
 // GetHostKey returns the pinned SSH host key line for host:port (TOFU), or ""
