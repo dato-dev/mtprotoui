@@ -515,6 +515,7 @@ func (h *Handler) testSSH(w http.ResponseWriter, r *http.Request) {
 		User:        req.SSHUser,
 		AuthType:    req.SSHAuthType,
 		Credentials: buildCredentials(req),
+		HostKeys:    h.store,
 	}
 
 	if err := sshclient.TestConnection(cfg); err != nil {
@@ -624,7 +625,10 @@ func (h *Handler) runDelete(serverID string) {
 	if err := h.store.DeleteServer(ctx, serverID); err != nil {
 		log.Printf("delete server %s: %v", serverID, err)
 		_ = h.store.SetServerOperationFailed(ctx, serverID, "ready", err.Error())
+		return
 	}
+	// Drop the pinned SSH host key so a re-imaged host can be re-trusted later.
+	_ = h.store.DeleteHostKey(srv.Host + ":" + strconv.Itoa(srv.SSHPort))
 }
 
 func (h *Handler) sshConfigFromServer(srv store.Server) (sshclient.Config, error) {
@@ -638,6 +642,7 @@ func (h *Handler) sshConfigFromServer(srv store.Server) (sshclient.Config, error
 		User:        srv.SSHUser,
 		AuthType:    srv.SSHAuthType,
 		Credentials: creds,
+		HostKeys:    h.store,
 	}, nil
 }
 

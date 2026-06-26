@@ -101,6 +101,12 @@ CREATE TABLE IF NOT EXISTS servers (
 	last_error TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS known_hosts (
+	hostport TEXT PRIMARY KEY,
+	key_line TEXT NOT NULL,
+	created_at TEXT NOT NULL
+);
 `
 	if _, err := s.db.Exec(schema); err != nil {
 		return fmt.Errorf("migrate: %w", err)
@@ -422,6 +428,37 @@ func (s *Store) UpdateServerHealth(
 
 func (s *Store) DeleteServer(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM servers WHERE id = ?`, id)
+	return err
+}
+
+// GetHostKey returns the pinned SSH host key line for host:port (TOFU), or ""
+// if the host has not been seen before. Satisfies sshclient.HostKeyStore.
+func (s *Store) GetHostKey(hostport string) (string, error) {
+	var line string
+	err := s.db.QueryRowContext(context.Background(),
+		`SELECT key_line FROM known_hosts WHERE hostport = ?`, hostport).Scan(&line)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return line, nil
+}
+
+// PutHostKey pins the SSH host key line for host:port on first use.
+func (s *Store) PutHostKey(hostport, keyLine string) error {
+	_, err := s.db.ExecContext(context.Background(),
+		`INSERT OR REPLACE INTO known_hosts (hostport, key_line, created_at) VALUES (?, ?, ?)`,
+		hostport, keyLine, time.Now().UTC().Format(time.RFC3339))
+	return err
+}
+
+// DeleteHostKey removes a pinned host key (e.g. when a server is deleted so a
+// re-imaged host can be re-trusted on next connect).
+func (s *Store) DeleteHostKey(hostport string) error {
+	_, err := s.db.ExecContext(context.Background(),
+		`DELETE FROM known_hosts WHERE hostport = ?`, hostport)
 	return err
 }
 

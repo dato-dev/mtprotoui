@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -11,12 +12,23 @@ import (
 	"github.com/timurabdullin/mtprotoui/internal/crypto"
 )
 
+// HostKeyStore persists SSH host keys for trust-on-first-use (TOFU) verification.
+type HostKeyStore interface {
+	// GetHostKey returns the pinned key line for host:port, or "" if unknown.
+	GetHostKey(hostport string) (string, error)
+	// PutHostKey pins the key line for host:port on first contact.
+	PutHostKey(hostport, keyLine string) error
+}
+
 type Config struct {
 	Host        string
 	Port        int
 	User        string
 	AuthType    string
 	Credentials crypto.SSHCredentials
+	// HostKeys enables TOFU host-key verification. If nil, host keys are not
+	// verified (insecure) — always set it for real connections.
+	HostKeys HostKeyStore
 }
 
 func (c Config) addr() string {
@@ -51,9 +63,38 @@ func (c Config) clientConfig() (*ssh.ClientConfig, error) {
 	return &ssh.ClientConfig{
 		User:            c.User,
 		Auth:            auths,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // MVP; TODO: TOFU store
+		HostKeyCallback: c.hostKeyCallback(),
 		Timeout:         15 * time.Second,
 	}, nil
+}
+
+// hostKeyCallback implements TOFU: the first key seen for a host:port is pinned
+// in the store; later connections must present the same key or are rejected.
+func (c Config) hostKeyCallback() ssh.HostKeyCallback {
+	if c.HostKeys == nil {
+		return ssh.InsecureIgnoreHostKey() //nolint:gosec // no store provided
+	}
+	addr := c.addr()
+	return func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		presented := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
+		stored, err := c.HostKeys.GetHostKey(addr)
+		if err != nil {
+			return fmt.Errorf("read pinned host key: %w", err)
+		}
+		if stored == "" {
+			if err := c.HostKeys.PutHostKey(addr, presented); err != nil {
+				return fmt.Errorf("pin host key: %w", err)
+			}
+			return nil
+		}
+		if stored != presented {
+			return fmt.Errorf(
+				"host key mismatch for %s (possible MITM): pinned key differs from presented %s — remove the pinned key to re-trust",
+				addr, ssh.FingerprintSHA256(key),
+			)
+		}
+		return nil
+	}
 }
 
 func TestConnection(cfg Config) error {
