@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/dato-dev/mtprotoui/compare/v1.1.0...v1.2.0) (2026-06-26)
+
+
+### ✨ Features
+
+* **api:** audit log of server actions ([de127bd](https://github.com/dato-dev/mtprotoui/commit/de127bdd93ca9a05c32e6b39a9803e7fd62863ad))
+* **ssh:** TOFU host key verification ([cccb87a](https://github.com/dato-dev/mtprotoui/commit/cccb87a9f8a6a62773c8684c080871fa995ec090))
+
+
+### 🐛 Bug Fixes
+
+* **deps:** align react-dom and types back to v18 ([cdd88f1](https://github.com/dato-dev/mtprotoui/commit/cdd88f1d189fa2940835e6682a49f05f63afd800))
+
 ## [1.1.0](https://github.com/dato-dev/mtprotoui/compare/v1.0.1...v1.1.0) (2026-06-25)
 
 
