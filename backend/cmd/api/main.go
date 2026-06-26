@@ -60,6 +60,12 @@ func main() {
 	go healthWorker.Start(ctx)
 
 	handler := api.NewHandler(st, authSvc, cfg.EncryptionKey, wl)
+	handler.StartSNIRotation(ctx, cfg.SNIRotationInterval)
+	if cfg.SNIRotationInterval > 0 {
+		log.Printf("sni rotation: interval=%s", cfg.SNIRotationInterval)
+	} else {
+		log.Printf("sni rotation: disabled")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {

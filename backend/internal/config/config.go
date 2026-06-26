@@ -9,19 +9,20 @@ import (
 )
 
 type Config struct {
-	ListenAddr         string
-	DatabasePath       string
-	EncryptionKey      []byte
-	JWTSecret          []byte
-	AdminUser          string
-	AdminPassword      string
-	AdminPasswordReset bool
-	WhitelistURL       string
-	HealthInterval     time.Duration
-	PingEnabled        bool
-	PingCount          int
-	PingTimeout        time.Duration
-	TCPTimeout         time.Duration
+	ListenAddr          string
+	DatabasePath        string
+	EncryptionKey       []byte
+	JWTSecret           []byte
+	AdminUser           string
+	AdminPassword       string
+	AdminPasswordReset  bool
+	WhitelistURL        string
+	HealthInterval      time.Duration
+	SNIRotationInterval time.Duration
+	PingEnabled         bool
+	PingCount           int
+	PingTimeout         time.Duration
+	TCPTimeout          time.Duration
 }
 
 func Load() (Config, error) {
@@ -57,6 +58,8 @@ func Load() (Config, error) {
 		}
 		healthInterval = d
 	}
+	// 0 disables scheduled SNI rotation.
+	sniRotationInterval := durationFromEnv("SNI_ROTATION_INTERVAL", 0)
 	pingTimeout := durationFromEnv("PING_TIMEOUT", 4*time.Second)
 	tcpTimeout := durationFromEnv("TCP_TIMEOUT", 4*time.Second)
 	pingEnabled := boolFromEnv("PING_ENABLED", true)
@@ -81,19 +84,20 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		ListenAddr:         listenAddr,
-		DatabasePath:       dbPath,
-		EncryptionKey:      encKey,
-		JWTSecret:          []byte(jwtSecret),
-		AdminUser:          adminUser,
-		AdminPassword:      adminPassword,
-		AdminPasswordReset: adminPasswordReset,
-		WhitelistURL:       whitelistURL,
-		HealthInterval:     healthInterval,
-		PingEnabled:        pingEnabled,
-		PingCount:          pingCount,
-		PingTimeout:        pingTimeout,
-		TCPTimeout:         tcpTimeout,
+		ListenAddr:          listenAddr,
+		DatabasePath:        dbPath,
+		EncryptionKey:       encKey,
+		JWTSecret:           []byte(jwtSecret),
+		AdminUser:           adminUser,
+		AdminPassword:       adminPassword,
+		AdminPasswordReset:  adminPasswordReset,
+		WhitelistURL:        whitelistURL,
+		HealthInterval:      healthInterval,
+		SNIRotationInterval: sniRotationInterval,
+		PingEnabled:         pingEnabled,
+		PingCount:           pingCount,
+		PingTimeout:         pingTimeout,
+		TCPTimeout:          tcpTimeout,
 	}, nil
 }
 

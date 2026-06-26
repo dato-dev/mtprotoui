@@ -19,6 +19,10 @@ export default function EditServerModal({ server, onClose, onSaved }: Props) {
   const [sshUser, setSSHUser] = useState(server.ssh_user)
   const [mtprotoPort, setMtprotoPort] = useState(String(server.mtproto_port))
   const [tags, setTags] = useState(formatTags(server.tags))
+  const [rotateSNI, setRotateSNI] = useState(server.rotate_sni)
+
+  const usesSNI =
+    server.proxy_type === 'mtg' || (server.proxy_type === 'tg-ws-proxy' && server.fake_tls)
 
   const [changeAuth, setChangeAuth] = useState(false)
   const [authType, setAuthType] = useState<'password' | 'key'>(
@@ -45,6 +49,7 @@ export default function EditServerModal({ server, onClose, onSaved }: Props) {
       ssh_port: Number(sshPort) || undefined,
       ssh_user: sshUser.trim() || undefined,
       mtproto_port: Number(mtprotoPort) || undefined,
+      rotate_sni: usesSNI ? rotateSNI : undefined,
       tags: parseTags(tags),
     }
 
@@ -111,6 +116,13 @@ export default function EditServerModal({ server, onClose, onSaved }: Props) {
           Порт прокси
           <input value={mtprotoPort} onChange={(e) => setMtprotoPort(e.target.value)} inputMode="numeric" />
         </label>
+
+        {usesSNI && (
+          <label className="checkbox-row">
+            <input type="checkbox" checked={rotateSNI} onChange={(e) => setRotateSNI(e.target.checked)} />
+            <span>Авто-ротация SNI по расписанию</span>
+          </label>
+        )}
 
         {(portChanged || hostChanged) && (
           <div className="form-hint">

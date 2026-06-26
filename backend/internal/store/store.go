@@ -21,6 +21,7 @@ type Server struct {
 	EncryptionNonce   []byte     `json:"-"`
 	ProxyType         string     `json:"proxy_type"`
 	FakeTLS           bool       `json:"fake_tls"`
+	RotateSNI         bool       `json:"rotate_sni"`
 	SNIDomain         string     `json:"sni_domain"`
 	MTProtoPort       int        `json:"mtproto_port"`
 	Secret            string     `json:"secret"`
@@ -150,6 +151,7 @@ func (s *Store) migrateProxyColumns() error {
 	columns := []string{
 		`ALTER TABLE servers ADD COLUMN proxy_type TEXT NOT NULL DEFAULT 'mtg'`,
 		`ALTER TABLE servers ADD COLUMN fake_tls INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE servers ADD COLUMN rotate_sni INTEGER NOT NULL DEFAULT 0`,
 	}
 	for _, stmt := range columns {
 		if _, err := s.db.Exec(stmt); err != nil {
@@ -271,7 +273,7 @@ func (s *Store) UpdateUserPassword(ctx context.Context, id, passwordHash string,
 func (s *Store) ListServers(ctx context.Context) ([]Server, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, name, host, ssh_port, ssh_user, ssh_auth_type,
-		       encrypted_blob, encryption_nonce, proxy_type, fake_tls, sni_domain, mtproto_port,
+		       encrypted_blob, encryption_nonce, proxy_type, fake_tls, rotate_sni, sni_domain, mtproto_port,
 		       secret, proxy_link, container_name, tags, status, ping_status, tcp_status,
 		       ping_rtt_ms, deploy_status, operation, operation_step, operation_message,
 		       operation_progress, last_check_at, last_error, created_at
@@ -295,7 +297,7 @@ func (s *Store) ListServers(ctx context.Context) ([]Server, error) {
 func (s *Store) GetServer(ctx context.Context, id string) (*Server, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, name, host, ssh_port, ssh_user, ssh_auth_type,
-		       encrypted_blob, encryption_nonce, proxy_type, fake_tls, sni_domain, mtproto_port,
+		       encrypted_blob, encryption_nonce, proxy_type, fake_tls, rotate_sni, sni_domain, mtproto_port,
 		       secret, proxy_link, container_name, tags, status, ping_status, tcp_status,
 		       ping_rtt_ms, deploy_status, operation, operation_step, operation_message,
 		       operation_progress, last_check_at, last_error, created_at
@@ -320,15 +322,19 @@ func (s *Store) CreateServer(ctx context.Context, srv Server) error {
 	if srv.FakeTLS {
 		fakeTLS = 1
 	}
+	rotateSNI := 0
+	if srv.RotateSNI {
+		rotateSNI = 1
+	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO servers (
 			id, name, host, ssh_port, ssh_user, ssh_auth_type,
-			encrypted_blob, encryption_nonce, proxy_type, fake_tls, sni_domain, mtproto_port,
+			encrypted_blob, encryption_nonce, proxy_type, fake_tls, rotate_sni, sni_domain, mtproto_port,
 			secret, proxy_link, container_name, tags, status, deploy_status,
 			last_check_at, last_error, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		srv.ID, srv.Name, srv.Host, srv.SSHPort, srv.SSHUser, srv.SSHAuthType,
-		srv.EncryptedBlob, srv.EncryptionNonce, srv.ProxyType, fakeTLS, srv.SNIDomain, srv.MTProtoPort,
+		srv.EncryptedBlob, srv.EncryptionNonce, srv.ProxyType, fakeTLS, rotateSNI, srv.SNIDomain, srv.MTProtoPort,
 		srv.Secret, srv.ProxyLink, srv.ContainerName, EncodeTags(srv.Tags), srv.Status, srv.DeployStatus,
 		nullIfEmpty(lastCheck), srv.LastError, srv.CreatedAt.UTC().Format(time.RFC3339))
 	return err
@@ -343,13 +349,18 @@ func (s *Store) UpdateServerMeta(
 	sshUser, sshAuthType string,
 	mtprotoPort int,
 	tags []string,
+	rotateSNI bool,
 ) error {
+	rot := 0
+	if rotateSNI {
+		rot = 1
+	}
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE servers SET
 			name = ?, host = ?, ssh_port = ?, ssh_user = ?, ssh_auth_type = ?,
-			mtproto_port = ?, tags = ?
+			mtproto_port = ?, tags = ?, rotate_sni = ?
 		WHERE id = ?`,
-		name, host, sshPort, sshUser, sshAuthType, mtprotoPort, EncodeTags(tags), id)
+		name, host, sshPort, sshUser, sshAuthType, mtprotoPort, EncodeTags(tags), rot, id)
 	return err
 }
 
@@ -529,11 +540,11 @@ func scanServer(row scannable) (Server, error) {
 	var srv Server
 	var lastCheck, createdAt sql.NullString
 	var pingRTT sql.NullFloat64
-	var fakeTLS int
+	var fakeTLS, rotateSNI int
 	var tagsStr string
 	if err := row.Scan(
 		&srv.ID, &srv.Name, &srv.Host, &srv.SSHPort, &srv.SSHUser, &srv.SSHAuthType,
-		&srv.EncryptedBlob, &srv.EncryptionNonce, &srv.ProxyType, &fakeTLS, &srv.SNIDomain, &srv.MTProtoPort,
+		&srv.EncryptedBlob, &srv.EncryptionNonce, &srv.ProxyType, &fakeTLS, &rotateSNI, &srv.SNIDomain, &srv.MTProtoPort,
 		&srv.Secret, &srv.ProxyLink, &srv.ContainerName, &tagsStr, &srv.Status, &srv.PingStatus, &srv.TCPStatus,
 		&pingRTT, &srv.DeployStatus, &srv.Operation, &srv.OperationStep,
 		&srv.OperationMessage, &srv.OperationProgress, &lastCheck, &srv.LastError, &createdAt,
@@ -541,6 +552,7 @@ func scanServer(row scannable) (Server, error) {
 		return Server{}, err
 	}
 	srv.FakeTLS = fakeTLS == 1
+	srv.RotateSNI = rotateSNI == 1
 	srv.Tags = DecodeTags(tagsStr)
 	if pingRTT.Valid {
 		v := pingRTT.Float64

@@ -7,6 +7,7 @@ export type Server = {
   ssh_auth_type: string
   proxy_type: string
   fake_tls: boolean
+  rotate_sni: boolean
   sni_domain: string
   mtproto_port: number
   secret: string
@@ -64,6 +65,7 @@ export type EditPayload = {
   private_key?: string
   passphrase?: string
   mtproto_port?: number
+  rotate_sni?: boolean
   tags?: string[]
 }
 
@@ -84,6 +86,7 @@ export type SSHPayload = {
   proxy_type?: 'mtg' | 'tg-ws-proxy'
   mtproto_port?: number
   fake_tls?: boolean
+  rotate_sni?: boolean
   tags?: string[]
 }
 

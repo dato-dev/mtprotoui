@@ -71,12 +71,8 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/audit", h.listAudit)
 }
 
-// recordAudit appends an audit entry, resolving the actor from the JWT.
-func (h *Handler) recordAudit(r *http.Request, action, serverID, serverName, details string) {
-	actor := "unknown"
-	if claims, err := h.auth.ParseRequest(r); err == nil {
-		actor = claims.Username
-	}
+// addAudit appends an audit entry for the given actor.
+func (h *Handler) addAudit(actor, action, serverID, serverName, details string) {
 	_ = h.store.AddAuditEntry(context.Background(), store.AuditEntry{
 		ID:         uuid.NewString(),
 		CreatedAt:  time.Now().UTC(),
@@ -86,6 +82,15 @@ func (h *Handler) recordAudit(r *http.Request, action, serverID, serverName, det
 		ServerName: serverName,
 		Details:    details,
 	})
+}
+
+// recordAudit appends an audit entry, resolving the actor from the JWT.
+func (h *Handler) recordAudit(r *http.Request, action, serverID, serverName, details string) {
+	actor := "unknown"
+	if claims, err := h.auth.ParseRequest(r); err == nil {
+		actor = claims.Username
+	}
+	h.addAudit(actor, action, serverID, serverName, details)
 }
 
 func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +127,7 @@ type sshRequest struct {
 	ProxyType   string   `json:"proxy_type"`
 	MTProtoPort int      `json:"mtproto_port"`
 	FakeTLS     bool     `json:"fake_tls"`
+	RotateSNI   bool     `json:"rotate_sni"`
 	Tags        []string `json:"tags"`
 }
 
@@ -135,6 +141,7 @@ type editServerRequest struct {
 	PrivateKey  string   `json:"private_key"`
 	Passphrase  string   `json:"passphrase"`
 	MTProtoPort int      `json:"mtproto_port"`
+	RotateSNI   bool     `json:"rotate_sni"`
 	Tags        []string `json:"tags"`
 }
 
@@ -276,6 +283,7 @@ func (h *Handler) createServer(w http.ResponseWriter, r *http.Request) {
 		EncryptionNonce: nonce,
 		ProxyType:       proxyType,
 		FakeTLS:         fakeTLS,
+		RotateSNI:       req.RotateSNI,
 		MTProtoPort:     mtprotoPort,
 		Tags:            req.Tags,
 		ContainerName:   deploy.DefaultContainerName(proxyType),
@@ -368,7 +376,7 @@ func (h *Handler) editServer(w http.ResponseWriter, r *http.Request) {
 		sshAuthType = req.SSHAuthType
 	}
 
-	if err := h.store.UpdateServerMeta(r.Context(), id, name, host, sshPort, sshUser, sshAuthType, mtprotoPort, req.Tags); err != nil {
+	if err := h.store.UpdateServerMeta(r.Context(), id, name, host, sshPort, sshUser, sshAuthType, mtprotoPort, req.Tags, req.RotateSNI); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update server")
 		return
 	}

@@ -194,6 +194,7 @@ docker compose -f docker-compose-prod.yml up -d
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
 | `WHITELIST_URL` | GitHub whitelist | URL списка SNI-доменов |
+| `SNI_ROTATION_INTERVAL` | `0` | Интервал авто-ротации SNI (напр. `24h`); `0` — выключено. Меняет SNI/secret/ссылку у серверов с включённой опцией |
 | `ADMIN_PASSWORD_RESET` | `false` | `true` → при старте сбросить пароль админа на `ADMIN_PASSWORD` и потребовать смену. После входа вернуть `false` |
 
 ---

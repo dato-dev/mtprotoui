@@ -405,6 +405,7 @@ export default function ServersTable({
                             <span className="detail-value">
                               {proxyTypeLabel(server.proxy_type)}
                               {server.proxy_type === 'tg-ws-proxy' && server.fake_tls ? ' · Fake TLS' : ''}
+                              {server.rotate_sni ? ' · ротация SNI' : ''}
                             </span>
                           </div>
                           <div className="detail-cell">

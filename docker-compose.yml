@@ -12,6 +12,7 @@ services:
       ADMIN_PASSWORD_RESET: ${ADMIN_PASSWORD_RESET:-false}
       WHITELIST_URL: ${WHITELIST_URL:-https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/main/whitelist.txt}
       HEALTH_INTERVAL: ${HEALTH_INTERVAL:-5m}
+      SNI_ROTATION_INTERVAL: ${SNI_ROTATION_INTERVAL:-0}
       PING_ENABLED: ${PING_ENABLED:-true}
       PING_COUNT: ${PING_COUNT:-3}
       PING_TIMEOUT: ${PING_TIMEOUT:-4s}

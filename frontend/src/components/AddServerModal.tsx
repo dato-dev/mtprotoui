@@ -18,6 +18,7 @@ export default function AddServerModal({ onClose, onCreated }: Props) {
   const [mtprotoPort, setMtprotoPort] = useState('443')
   const [portTouched, setPortTouched] = useState(false)
   const [fakeTLS, setFakeTLS] = useState(false)
+  const [rotateSNI, setRotateSNI] = useState(false)
   const [tags, setTags] = useState('')
   const [sshPort, setSSHPort] = useState('22')
   const [sshUser, setSSHUser] = useState('root')
@@ -55,9 +56,12 @@ export default function AddServerModal({ onClose, onCreated }: Props) {
       proxy_type: proxyType,
       mtproto_port: Number(mtprotoPort) || defaultPortNumber(proxyType),
       fake_tls: proxyType === 'tg-ws-proxy' ? fakeTLS : undefined,
+      rotate_sni: usesSNI ? rotateSNI : undefined,
       tags: parseTags(tags),
     }
   }
+
+  const usesSNI = proxyType === 'mtg' || (proxyType === 'tg-ws-proxy' && fakeTLS)
 
   function defaultPortNumber(type: 'mtg' | 'tg-ws-proxy') {
     return type === 'tg-ws-proxy' ? 1443 : 443
@@ -178,6 +182,32 @@ export default function AddServerModal({ onClose, onCreated }: Props) {
                     'Без него используется обычный dd-секрет.'
                   }
                   aria-label="Подсказка о Fake TLS"
+                >
+                  i
+                </span>
+              </span>
+            </span>
+          </label>
+        )}
+
+        {usesSNI && (
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={rotateSNI}
+              onChange={(e) => setRotateSNI(e.target.checked)}
+            />
+            <span>
+              <span className="label-with-hint">
+                Авто-ротация SNI по расписанию
+                <span
+                  className="hint"
+                  tabIndex={0}
+                  data-tip={
+                    'Периодически меняет SNI-домен из whitelist (интервал задаётся на сервере, SNI_ROTATION_INTERVAL).\n' +
+                    'Важно: при ротации меняются secret и ссылка tg://proxy — старая перестаёт работать.'
+                  }
+                  aria-label="Подсказка об авто-ротации SNI"
                 >
                   i
                 </span>
