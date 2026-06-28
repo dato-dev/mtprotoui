@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/dato-dev/mtprotoui/compare/v1.2.0...v1.3.0) (2026-06-26)
+
+
+### ✨ Features
+
+* scheduled SNI rotation ([070fc69](https://github.com/dato-dev/mtprotoui/commit/070fc69107f758729faeb46dd61306f4e1aef3a3))
+
+
+### 📚 Documentation
+
+* refresh README/ROADMAP and add log viewer enhancements task ([2191aae](https://github.com/dato-dev/mtprotoui/commit/2191aaeca6e8f9654fb31da850a56e8274b2aa2a))
+
 ## [1.2.0](https://github.com/dato-dev/mtprotoui/compare/v1.1.0...v1.2.0) (2026-06-26)
 
 
